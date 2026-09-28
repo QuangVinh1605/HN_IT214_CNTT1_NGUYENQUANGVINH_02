@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:booking-service}
+
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:booking_db;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: ${JPA_FORMAT_SQL:true}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      acks: ${KAFKA_PRODUCER_ACKS:all}
+      retries: ${KAFKA_PRODUCER_RETRIES:3}
+      properties:
+        enable.idempotence: ${KAFKA_PRODUCER_IDEMPOTENCE:true}
+
+  cloud:
+    openfeign:
+      client:
+        config:
+          movie-service:
+            connect-timeout: ${MOVIE_CLIENT_CONNECT_TIMEOUT_MS:1000}
+            read-timeout: ${MOVIE_CLIENT_READ_TIMEOUT_MS:2000}
+
+server:
+  port: ${SERVER_PORT:8082}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    register-with-eureka: ${EUREKA_REGISTER:true}
+    fetch-registry: ${EUREKA_FETCH_REGISTRY:true}
+  instance:
+    prefer-ip-address: ${EUREKA_PREFER_IP_ADDRESS:true}
+    instance-id: ${spring.application.name}:${HOSTNAME:localhost}:${server.port}
+
+booking:
+  kafka:
+    booking-created-topic: ${BOOKING_CREATED_TOPIC:booking-created}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      movieService:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: ${MOVIE_CB_WINDOW_SIZE:10}
+        minimum-number-of-calls: ${MOVIE_CB_MIN_CALLS:5}
+        failure-rate-threshold: ${MOVIE_CB_FAILURE_RATE:50}
+        wait-duration-in-open-state: ${MOVIE_CB_OPEN_WAIT:30s}
+        permitted-number-of-calls-in-half-open-state: ${MOVIE_CB_HALF_OPEN_CALLS:3}
+        automatic-transition-from-open-to-half-open-enabled: true
+        ignore-exceptions:
+          - feign.FeignException$NotFound
